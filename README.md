@@ -20,8 +20,7 @@ Citizen report -> AI classification -> severity/risk score -> duplicate check ->
    Open .env and add OPENROUTER_API_KEY=your_key
 6. Start:
    uvicorn main:app --reload
-7. Open:
-   http://127.0.0.1:8000
+7. Open the web
 
 ## Demo coordinates
 The app starts with sample resources around Cuttack.
