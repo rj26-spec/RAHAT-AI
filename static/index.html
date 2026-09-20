@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAHAT AI — Emergency Intelligence</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--text:#142033;--muted:#667085;--accent:#e53935;--green:#159957;--amber:#d97706;--blue:#2563eb}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#101828;color:white;padding:18px 28px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:800;font-size:23px}.tag{color:#b9c2d0;font-size:13px}
+nav{display:flex;gap:8px}.tab{border:0;background:#1d2939;color:white;padding:10px 15px;border-radius:9px;cursor:pointer}.tab.active{background:#e53935}
+main{max-width:1250px;margin:auto;padding:22px}.view{display:none}.view.active{display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:var(--card);border:1px solid #e5e7eb;border-radius:16px;padding:20px;box-shadow:0 5px 18px #1018280b}
+h1,h2,h3{margin-top:0}.muted{color:var(--muted)}label{display:block;font-weight:700;font-size:13px;margin:13px 0 6px}
+textarea,input{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:10px;font:inherit}textarea{min-height:120px;resize:vertical}
+button.primary{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:800;cursor:pointer;margin-top:12px}
+button.secondary{background:#eef2f6;color:#172b4d;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.stat{padding:16px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}.num{font-size:28px;font-weight:800}
+#map{height:500px;border-radius:14px;overflow:hidden}.pill{display:inline-block;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:800}.critical{background:#fee2e2;color:#b91c1c}.high{background:#ffedd5;color:#c2410c}.medium{background:#fef3c7;color:#92400e}.low{background:#dcfce7;color:#166534}
+.result{margin-top:15px}.bigscore{font-size:42px;font-weight:900}.resource{display:flex;justify-content:space-between;padding:11px;border:1px solid #e5e7eb;border-radius:10px;margin-top:8px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #eee;font-size:13px}
+.toast{position:fixed;right:20px;bottom:20px;background:#101828;color:#fff;padding:13px 17px;border-radius:10px;display:none}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}header{align-items:flex-start;gap:10px;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="logo">🚨 RAHAT AI</div><div class="tag">Emergency Intelligence & Response Coordination</div></div>
+  <nav><button class="tab active" onclick="showTab('report',this)">Report</button><button class="tab" onclick="showTab('dashboard',this)">Responder Dashboard</button></nav>
+</header>
+
+<main>
+<section id="report" class="view active">
+  <div class="grid">
+    <div class="card">
+      <h2>Report an Emergency</h2>
+      <p class="muted">Convert a citizen report into a prioritized emergency case.</p>
+      <label>Description</label>
+      <textarea id="description" placeholder="Example: Two people injured in a road accident near college gate. One person is unconscious and traffic is blocked."></textarea>
+      <label>Latitude</label><input id="lat" value="20.2961">
+      <label>Longitude</label><input id="lng" value="85.8245">
+      <div class="row"><button class="secondary" onclick="demoLocation()">Use Demo Location</button><button class="secondary" onclick="getLocation()">Use My Location</button></div>
+      <label>Evidence image (optional)</label><input id="image" type="file" accept="image/*">
+      <button class="primary" onclick="submitReport()">🚨 Analyze & Report</button>
+      <div id="reportResult"></div>
+    </div>
+
+    <div class="card">
+      <h2>How RAHAT works</h2>
+      <div class="row"><span>1️⃣ Citizen report</span><span>→</span><span>2️⃣ AI analysis</span></div>
+      <br><div class="row"><span>3️⃣ Risk score</span><span>→</span><span>4️⃣ GIS resource match</span></div>
+      <br><div class="row"><span>5️⃣ Dispatch</span><span>→</span><span>6️⃣ Response tracking</span></div>
+      <hr>
+      <h3>Hackathon differentiators</h3>
+      <ul>
+        <li>AI incident classification</li>
+        <li>Severity & risk scoring</li>
+        <li>Nearby duplicate detection</li>
+        <li>Resource/ambulance matching</li>
+        <li>Map-based emergency corridor concept</li>
+        <li>Human responder remains in control</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="dashboard" class="view">
+  <div class="stats" id="stats"></div>
+  <div class="grid">
+    <div class="card"><h2>Live Incident Map</h2><div id="map"></div></div>
+    <div class="card"><h2>Active Incidents</h2><div id="incidents"></div></div>
+  </div>
+  <br>
+  <div class="card"><h2>Resources</h2><div id="resources"></div></div>
+  <br><button class="secondary" onclick="resetDemo()">Reset demo data</button>
+</section>
+</main>
+<div id="toast" class="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map, markers=[];
+function showTab(id,btn){
+ document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
+ if(id==='dashboard'){loadDashboard();setTimeout(()=>{if(!map)initMap();map.invalidateSize()},100)}
+}
+function initMap(){map=L.map('map').setView([20.2961,85.8245],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map)}
+function demoLocation(){lat.value='20.2961';lng.value='85.8245';toast('Demo location set')}
+function getLocation(){navigator.geolocation?.getCurrentPosition(p=>{lat.value=p.coords.latitude.toFixed(6);lng.value=p.coords.longitude.toFixed(6);toast('Location captured')},()=>toast('Location permission unavailable; use demo location'))}
+async function submitReport(){
+ const d=document.getElementById('description').value.trim();if(!d)return toast('Enter an emergency description');
+ const fd=new FormData();fd.append('description',d);fd.append('lat',lat.value);fd.append('lng',lng.value);
+ const f=document.getElementById('image').files[0];if(f)fd.append('image',f);
+ const r=await fetch('/api/report',{method:'POST',body:fd});const data=await r.json();
+ if(data.error)return toast(data.error);
+ const a=data.analysis;
+ let resources=data.resources.map(x=>`<div class="resource"><span>🚑 ${x.name}<br><small>${x.distance_km} km away · ETA ${x.eta_minutes} min</small></span><button class="secondary" onclick="dispatch(${data.incident_id},${x.id})">Dispatch</button></div>`).join('');
+ document.getElementById('reportResult').innerHTML=`<div class="result card">
+ <div class="muted">AI INCIDENT ANALYSIS</div><h2>${a.incident_type.replaceAll('_',' ')}</h2>
+ <span class="pill ${a.severity.toLowerCase()}">${a.severity}</span>
+ <div class="bigscore">${a.risk_score}<small>/100</small></div>
+ <b>Risk reasoning</b><p>${a.reason}</p>
+ <p><b>People affected:</b> ${a.people_affected}</p>
+ <p>${data.duplicate?`🟡 Similar nearby incident detected: #${data.duplicate.id} (${data.duplicate.distance_km} km).`:'🟢 No nearby matching incident found.'}</p>
+ <h3>Recommended resources</h3>${resources||'<p>No available matching resource.</p>'}</div>`;
+ toast('Incident analyzed successfully');
+}
+async function dispatch(i,r){const fd=new FormData();fd.append('incident_id',i);fd.append('resource_id',r);const x=await fetch('/api/dispatch',{method:'POST',body:fd});const d=await x.json();toast(d.ok?`Dispatched. ETA ${d.eta_minutes} min`:'Dispatch failed');loadDashboard()}
+async function loadDashboard(){
+ const d=await (await fetch('/api/dashboard')).json();
+ stats.innerHTML=Object.entries({Total:d.stats.total,Critical:d.stats.critical,Active:d.stats.active,'Available resources':d.stats.available}).map(([k,v])=>`<div class="stat"><div class="muted">${k}</div><div class="num">${v}</div></div>`).join('');
+ incidents.innerHTML=d.incidents.length?d.incidents.map(x=>`<div class="card" style="margin-bottom:8px"><b>#${x.id} ${x.incident_type.replaceAll('_',' ')}</b> <span class="pill ${x.severity.toLowerCase()}">${x.severity}</span><br><small>${x.description}</small><br><small>Risk ${x.risk_score}/100 · ${x.status}</small></div>`).join(''):'<p class="muted">No incidents yet.</p>';
+ resources.innerHTML='<table><tr><th>Resource</th><th>Type</th><th>Status</th></tr>'+d.resources.map(x=>`<tr><td>${x.name}</td><td>${x.resource_type}</td><td>${x.status}</td></tr>`).join('')+'</table>';
+ if(!map)initMap();markers.forEach(m=>map.removeLayer(m));markers=[];
+ d.incidents.forEach(x=>{const m=L.marker([x.lat,x.lng]).addTo(map).bindPopup(`<b>Incident #${x.id}</b><br>${x.incident_type}<br>${x.severity} · Risk ${x.risk_score}`);markers.push(m)});
+ d.resources.forEach(x=>{const m=L.circleMarker([x.lat,x.lng],{radius:7}).addTo(map).bindPopup(`<b>${x.name}</b><br>${x.resource_type}<br>${x.status}`);markers.push(m)});
+}
+async function resetDemo(){await fetch('/api/reset',{method:'POST'});loadDashboard();toast('Demo reset')}
+function toast(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',2500)}
+</script>
+</body>
+</html>
