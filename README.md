@@ -2,7 +2,19 @@
 AI-Powered Emergency Intelligence & Response Coordination Platform
 
 ## Core demo flow
-Citizen report -> AI classification -> severity/risk score -> duplicate check -> nearby resource recommendation -> responder dashboard -> dispatch.
+Citizen report 
+     ↓
+AI classification 
+     ↓
+severity/risk score
+     ↓
+duplicate check
+     ↓
+nearby resource recommendation
+     ↓
+responder dashboard
+     ↓
+dispatch.
 
 ## Run on Windows PowerShell
 1. Open PowerShell in this folder.
